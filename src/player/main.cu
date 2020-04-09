@@ -20,9 +20,10 @@ int main(int argc, char* argv[])
   }
 
   const char* inputPath = argv[1];
-  const uintmax_t startTime = atol(argv[2]);
+  const uintmax_t startTime = atol(argv[2])*1000;
   const uint16_t guiWidth = atol(argv[3]);
   const uint16_t guiHeight = atol(argv[4]);
+  uint64_t time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
   FILE* input = fopen(inputPath, "r");
   uint8_t headerBuf[13];
   if(fread(headerBuf, sizeof(uint8_t), 13, input) != 13 || ftell(input) != 13){
@@ -43,21 +44,15 @@ int main(int argc, char* argv[])
   const uint16_t height = ((uint16_t)headerBuf[12] << 8) + (uint16_t)headerBuf[11];
   cuda::GpuMat frame(height, width, CV_8UC3);
   Mat gui(height, width, CV_8UC3), guiResized(guiHeight, guiWidth, CV_8UC3);
-  uint8_t*** values;
-  uint8_t** repetitions;
-  uint8_t** toBeLoaded;
-  cudaMallocManaged(&values, width*sizeof(uint8_t**));
-  cudaMallocManaged(&repetitions, width*sizeof(uint8_t*));
-  cudaMallocManaged(&toBeLoaded, width*sizeof(uint8_t*));
-  for(uint16_t x = 0; x < width; ++x)
-  {
-    cudaMallocManaged(&values[x], height*sizeof(uint8_t*));
-    cudaMallocManaged(&repetitions[x], height*sizeof(uint8_t));
-    cudaMallocManaged(&toBeLoaded[x], height*sizeof(uint8_t));
-    for(uint16_t y = 0; y < height; ++y)
-      cudaMallocManaged(&values[x][y], 3*sizeof(uint8_t));
-  }
+  uint8_t* values;
+  uint8_t* repetitions;
+  uint8_t* toBeLoaded;
+  uint8_t key = 0;
+  cudaMallocManaged(&values, width*height*3*sizeof(uint8_t));
+  cudaMallocManaged(&repetitions, width*height*sizeof(uint8_t));
+  cudaMallocManaged(&toBeLoaded, width*height*sizeof(uint8_t));
   uint32_t* readBuf = new uint32_t[width*height];
+  uint64_t frameTime, waitTime;
 
   namedWindow(argv[0], WINDOW_NORMAL);
   setWindowProperty(argv[0], WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN);
@@ -69,14 +64,13 @@ int main(int argc, char* argv[])
     for(uint16_t y = 0; y < height; ++y)
     {
       uint64_t i = ((y*width) + x);
-      values[x][y][0] = (readBuf[i] >> 0) % 256;
-      values[x][y][1] = (readBuf[i] >> 8) % 256;
-      values[x][y][2] = (readBuf[i] >> 16) % 256;
-      repetitions[x][y] = (readBuf[i] >> 24) % 256;
-      toBeLoaded[x][y] = 0;
+      values[3*((x*height)+y) + 0] = (readBuf[i] >> 0) % 256;
+      values[3*((x*height)+y) + 1] = (readBuf[i] >> 8) % 256;
+      values[3*((x*height)+y) + 2] = (readBuf[i] >> 16) % 256;
+      repetitions[(x*height)+y] = (readBuf[i] >> 24) % 256;
+      toBeLoaded[(x*height)+y] = 0;
     }
   }
-
   for(uint64_t frameId = 0; frameId < length; ++frameId)
   {
     render(frame, values, repetitions, toBeLoaded);
@@ -84,27 +78,35 @@ int main(int argc, char* argv[])
     uint64_t amountToLoad = 0;
     for(uint16_t x = 0; x < width; ++x)
       for(uint16_t y = 0; y < height; ++y)
-        amountToLoad += toBeLoaded[x][y];
+        amountToLoad += toBeLoaded[(x*height)+y];
     fread(readBuf, sizeof(uint32_t), amountToLoad, input);
     uintmax_t i = 0;
     for(uint16_t y = 0; y < height; ++y)
       for(uint16_t x = 0; x < width; ++x)
-        if(toBeLoaded[x][y] == 1){
-          values[x][y][0] = (readBuf[i] >> 0) % 256;
-          values[x][y][1] = (readBuf[i] >> 8) % 256;
-          values[x][y][2] = (readBuf[i] >> 16) % 256;
-          repetitions[x][y] = (readBuf[i] >> 24) % 256;
-          toBeLoaded[x][y] = 0;
+        if(toBeLoaded[(x*height)+y] == 1){
+          values[3*((x*height)+y) + 0] = (readBuf[i] >> 0) % 256;
+          values[3*((x*height)+y) + 1] = (readBuf[i] >> 8) % 256;
+          values[3*((x*height)+y) + 2] = (readBuf[i] >> 16) % 256;
+          repetitions[(x*height)+y] = (readBuf[i] >> 24) % 256;
+          toBeLoaded[(x*height)+y] = 0;
           ++i;
         }
 
-    if(waitKey(1) == 27) //TODO: bigger precision
+    time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+    frameTime = startTime + ((1000*frameId) / fps);
+    if(frameTime > time)
+      waitTime = frameTime - time;
+    else
+      waitTime = 1;
+    key = waitKey(waitTime);
+    if(key == 27)
       break;
+
     frame.download(gui);
-    // cv::resize(gui, guiResized, Size(guiWidth, guiHeight));
+    cv::resize(gui, guiResized, Size(guiWidth, guiHeight));
     imshow(argv[0], gui);
   }
-
+  time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
 
   delete readBuf;
   cudaFree(values);
