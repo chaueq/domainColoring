@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
 
     frame.download(gui);
     cv::resize(gui, guiResized, Size(guiWidth, guiHeight));
-    imshow(argv[0], gui);
+    imshow(argv[0], guiResized);
   }
   time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
 
