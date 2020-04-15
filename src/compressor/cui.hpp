@@ -5,7 +5,8 @@
 
 struct cuiThreadData
 {
-  uint64_t* framesDone;
+  uint64_t* readingFramesDone;
+  uint64_t* writingFramesDone;
   uint64_t framesTBD;
 };
 

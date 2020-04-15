@@ -47,10 +47,10 @@ void* cuiWorker(void* threadarg)
    cuiThreadData* data;
    data = (cuiThreadData*) threadarg;
 
-   while(*data->framesDone < data->framesTBD)
+   while((*data->readingFramesDone + *data->writingFramesDone) < (2*data->framesTBD))
    {
      usleep(SLEEP_TIME_MS * 1000);
-     printProgress(*data->framesDone, data->framesTBD);
+     printProgress(*data->readingFramesDone + *data->writingFramesDone, 2*data->framesTBD);
    }
 
    pthread_exit(NULL);
