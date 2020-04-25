@@ -9,6 +9,7 @@
 #include <chrono>
 #include "render.cuh"
 #include "cui.hpp"
+#include "../libprv/PRVcompressor.hpp"
 
 using namespace std;
 using namespace cv;
@@ -17,7 +18,7 @@ int main(int argc, char* argv[])
 {
   if (argc != 4 && argc != 5 && argc != 8)
   {
-      cerr << argv[0] << " <mode> <width> <height> [<output_avi_file> <start_time> <duration_time> <fps>]" << endl;
+      cerr << argv[0] << " <mode> <width> <height> [<output_prv_file> <start_time> <duration_time> <fps>]" << endl;
       cerr << endl;
       cerr << "\t" << "width, height - pixels" << endl;
       cerr << "\t" << "start_time, duration_time - in seconds" << endl;
@@ -92,7 +93,7 @@ int main(int argc, char* argv[])
     uintmax_t framesDone = 0;
     const uintmax_t framesTBD = (duration_time / 1000) * fps;
     const double time_step = 1000 / (double)fps;
-    VideoWriter output(path, VideoWriter::fourcc('H','F','Y','U'), fps, Size(width,height));
+    PRVcompressor output(path, 0, fps, framesTBD, width, height);
     Mat cpuVideoBuffer;
 
     cerr << "Frames TBG: " << framesTBD << endl;
@@ -112,10 +113,9 @@ int main(int argc, char* argv[])
       cuda::cvtColor(frameHSL, frameBGR, COLOR_HLS2BGR);
 
       frameBGR.download(cpuVideoBuffer);
-      output.write(cpuVideoBuffer);
+      output.upload(cpuVideoBuffer);
     }
 
-    output.release();
     pthread_join(cuiThread, &status);
   }
 
