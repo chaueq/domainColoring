@@ -7,23 +7,32 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include <chrono>
+#include <X11/Xlib.h>
 #include "render.cuh"
+
+#define DEFAULT_GUI_WIDTH 1920
+#define DEFAULT_GUI_HEIGHT 1080
 
 using namespace std;
 using namespace cv;
 
 int main(int argc, char* argv[])
 {
-  if(argc != 5){
-    cerr << argv[0] << " <file> <start_time> <width> <height>" << endl;
+  if(argc < 2 || argc > 5){
+    cerr << argv[0] << " <prv_file> [start_time] [<width> <height>] " << endl;
     return 1;
   }
 
   const char* inputPath = argv[1];
-  const uintmax_t startTime = atol(argv[2])*1000;
-  const uint16_t guiWidth = atol(argv[3]);
-  const uint16_t guiHeight = atol(argv[4]);
+  if(strcmp(strrchr(inputPath, '.'), ".prv")){
+    cerr << "File has other extension than .prv" << endl;
+    return 1;
+  }
+
   uint64_t time = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now().time_since_epoch()).count();
+  const uintmax_t startTime = (argc == 3 || argc == 5) ? atol(argv[2])*1000 : time;
+  const uint16_t guiWidth = (argc == 4 || argc == 5) ? atol((argc==4) ? argv[2] : argv[3]) : DEFAULT_GUI_WIDTH;
+  const uint16_t guiHeight = (argc == 4 || argc == 5) ? atol((argc==4) ? argv[3] : argv[4]) : DEFAULT_GUI_HEIGHT;
   FILE* input = fopen(inputPath, "r");
   uint8_t headerBuf[13];
   if(fread(headerBuf, sizeof(uint8_t), 13, input) != 13 || ftell(input) != 13){
