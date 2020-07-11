@@ -6,6 +6,7 @@
 #include <thrust/complex.h>
 #include "render.cuh"
 
+#define M_PHI 1.618033988749895
 
 
 __device__ thrust::complex<double> f1(thrust::complex<double> z, double time)
@@ -63,7 +64,32 @@ __device__ thrust::complex<double> f4(thrust::complex<double> z, double time)
   return z;
 }
 
+__device__ thrust::complex<double> f5(thrust::complex<double> z, double time)
+{
+  using namespace thrust;
+  using namespace cv::cudev;
 
+  z /= complex<double>(100, 0);
+  z = acosh(z) + cos(z);
+  z = complex<double>(cos(z.real()), sin(z.imag()));
+  double k = pow(M_PHI, M_PI); //0-25
+  z = complex<double>(round(z.real()*k), round(z.imag()*k));
+  z = complex<double>(z.real()/pow(M_PHI, 2), z.imag()/pow(M_PHI, 2));
+
+  return z;
+}
+
+__device__ thrust::complex<double> f6(thrust::complex<double> z, double time)
+{
+  using namespace thrust;
+  using namespace cv::cudev;
+
+  z /= complex<double>(100, 0);
+  z = sin(z);
+  z = complex<double>(z.real(), z.imag());
+
+  return z;
+}
 __device__ thrust::complex<double> f(thrust::complex<double> z, double time, uintmax_t mode)
 {
   using namespace thrust;
@@ -78,9 +104,13 @@ __device__ thrust::complex<double> f(thrust::complex<double> z, double time, uin
     complex<double> z3 = f3(z, time); //flower
     return z3;
   }
-  else if(mode == 2){
-    complex<double> z4 = f4(z, time); // towers
+  else if(mode == 2){ //towers
+    complex<double> z4 = f4(z, time);
     return z4;
+  }
+  else if(mode == 3){ //beads
+    complex<double> z5 = f5(z, time);
+    return z5;
   }
 
   return z;

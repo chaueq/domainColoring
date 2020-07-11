@@ -27,6 +27,7 @@ int main(int argc, char* argv[])
       cerr << "\t" << "0 - animation" << endl;
       cerr << "\t" << "1 - flower" << endl;
       cerr << "\t" << "2 - towers" << endl;
+      cerr << "\t" << "3 - beads" << endl;
       return 1;
   }
 
