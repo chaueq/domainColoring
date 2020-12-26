@@ -45,7 +45,6 @@ __device__ thrust::complex<double> f3(thrust::complex<double> z, double time)
   z = pow(z,2) - complex<double>(1,0);
   z *= pow(z - complex<double>(2,1), 2);
   z /= pow(z,2) + complex<double>(2,2);
-  // double k = abs(((intmax_t)round(time/10) % 5000) - 2500)/100.0;
   double k = 10.8; // 0 - 25
   z = complex<double>(round(z.real()*k), round(z.imag()*k));
 
