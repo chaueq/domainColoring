@@ -84,12 +84,50 @@ __device__ thrust::complex<double> f6(thrust::complex<double> z, double time)
   using namespace thrust;
   using namespace cv::cudev;
 
-  z /= complex<double>(100, 0);
-  z = sin(z);
-  z = complex<double>(z.real(), z.imag());
+  z /= 500.0;
+
+  if(norm(z) > 0.5)
+  {
+    z *= 500.0;
+    complex<double> sum(0,0);
+    intmax_t f[] = {0,1,2,4,6,11,18,31,54,97,172,309,564,1028,1900,
+ 3512,6542,12251,23000,43390,82025,155611,295947,
+ 564163,1077871,2063689,3957809,7603553,14630843,
+ 28192750,54400028,105097565,203280221,393615806,
+ 762939111,1480206279,2874398515,5586502348,
+ 10866266172,21151907950,41203088796,80316571436,
+ 156661034233,305761713237,597116381732,
+ 1166746786182,2280998753949,4461632979717,
+ 8731188863470,17094432576778,33483379603407,
+ 65612899915304,128625503610475};
+    for(uintmax_t m = 0; m < 52; ++m)
+      for(uintmax_t x = 1; x < 52; ++x)
+      {
+        double a = f[m]*f[x-1];
+        double b = f[m]*f[x];
+        sum += pow(abs(sin(b))/((z/2.0) - complex<double>((1.0-abs(cos(a)))*((intmax_t)a%960 - 480), (1.0-abs(sin(b)))*((intmax_t)b%540 - 270))),3);
+      }
+    return sum;
+  }
+
+  z = exp(z);
+  z /= M_PHI;
 
   return z;
 }
+
+__device__ thrust::complex<double> f7(thrust::complex<double> z, double time)
+{
+  using namespace thrust;
+  using namespace cv::cudev;
+
+  z /= 50.0;
+  z -= 13.0;
+  z = 1.0/z;
+  z = pow(z, 80);
+  return z;
+}
+
 __device__ thrust::complex<double> f(thrust::complex<double> z, double time, uintmax_t mode)
 {
   using namespace thrust;
@@ -111,6 +149,15 @@ __device__ thrust::complex<double> f(thrust::complex<double> z, double time, uin
   else if(mode == 3){ //beads
     complex<double> z5 = f5(z, time);
     return z5;
+  }
+  else if(mode == 4){ //planet
+    double alpha = M_PI/36.0;
+    z = complex<double>(z.real()*cos(alpha) - z.imag()*sin(alpha), z.imag()*cos(alpha) + z.real()*sin(alpha));
+
+    complex<double> z6 = f6(z, time);
+    complex<double> z7 = f7(z, time);
+
+    return z6 + z7;
   }
 
   return z;

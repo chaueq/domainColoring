@@ -28,6 +28,7 @@ int main(int argc, char* argv[])
       cerr << "\t" << "1 - flower" << endl;
       cerr << "\t" << "2 - towers" << endl;
       cerr << "\t" << "3 - beads" << endl;
+      cerr << "\t" << "4 - planet" << endl;
       return 1;
   }
 
